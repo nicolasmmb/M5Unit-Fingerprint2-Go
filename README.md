@@ -71,6 +71,7 @@ if ok {
 
 | Area | Functions |
 |---|---|
+| Construction | `NewTransport(Transport)` on any chip, `New(*machine.UART)` on ESP32 |
 | System | `Init`, `InitWithTimeout`, `InitContext`, `Handshake`, `Activate`, `ModuleStatus`, `GetFirmwareVersion`, `ReadSysParams`, `SetSleepTime`, `GetSleepTime`, `SetWorkMode`, `GetWorkMode`, `SaveConfig`, `GetSN`, `CheckSensor`, `GetRandom`, `WriteReg`, `SetMatchLevel`, `WaitWakeup`, `SetWakeupHandler` |
 | Biometrics | `Capture`, `GetEnrollImage`, `GenChar`, `Match`, `Search`, `SearchNow`, `RegModel`, `Store`, `LoadChar`, `Delete`, `Empty`, `Cancel` |
 | Enrollment | `StartAutoEnroll`, `NextEnrollEvent`, `AutoEnroll`, `StartAutoIdentify`, `NextIdentifyEvent`, `AutoIdentify` |
@@ -109,34 +110,33 @@ cancellation and concurrent callers.
 
 ## Board support
 
-This is the only lib of the M5 family that cannot be built outside the classic
-ESP32 today. The core is chip agnostic: it talks to a `Transport` interface
-(`Write`, `ReadByte`, `Buffered`). The problem is the public constructor.
+The driver is board agnostic. The core talks to a `Transport` interface
+(`Write`, `ReadByte`, `Buffered`), and `NewTransport` is the constructor that
+takes it:
 
 ```go
-// uart_esp32.go — whole file under //go:build esp32
-func New(uart *machine.UART) *Device { return newDevice(uart) }
+d, err := finger2.NewTransport(myUART)   // any chip, any byte stream
+if err != nil {
+    println("finger2:", err.Error())
+    return
+}
 ```
 
-`newDevice(Transport)` is private, so on ESP32-C3/S3 or a non-Espressif chip the
-package compiles but exposes no way to create a `Device`.
+`machine.UART`, a USB CDC port, a network socket or an in-memory pipe all
+satisfy `Transport`. The ESP32 helper `New(*machine.UART)` is a convenience on
+top of `NewTransport` and exists only under `//go:build esp32`, because it takes
+the concrete machine type.
 
-| Target | Result |
-|---|---|
-| `m5stick-c` (ESP32) | ok |
-| `m5stamp-c3` / `m5stamp-s3a` | `undefined: New` |
-| `pico` (RP2040) | `undefined: New` |
-| `arduino-nano33` (nRF52840) | `undefined: New` |
+Verified by compiling `NewTransport` for each target:
 
-Audit: `m5stick-hardware-pocs/docs/LIB-AGNOSTIC-AUDIT.md`.
+| Target | Chip | Result |
+|---|---|---|
+| `m5stick-c` | ESP32 | ok |
+| `m5stamp-c3` | ESP32-C3 | ok |
+| `pico` | RP2040 | ok |
+| `arduino-nano33` | nRF52840 | ok |
 
-### Missing / next steps
-
-- [ ] Export `NewTransport(t Transport) *Device` in an untagged file.
-- [ ] Keep `New(*machine.UART)` as a convenience helper under `//go:build esp32`.
-- [ ] Add a host test that builds a `Device` from a `Transport` fake.
-- [ ] Add the target matrix to CI (`pico`, `arduino-nano33`).
-- [ ] Update this README once the constructor is available everywhere.
+CI repeats this in the `agnostic` job.
 
 ## Testing
 

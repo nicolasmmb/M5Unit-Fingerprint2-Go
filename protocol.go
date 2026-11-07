@@ -131,6 +131,7 @@ var (
 	ErrInvalidParam = errors.New("finger2: invalid parameter")
 	ErrShortReply   = errors.New("finger2: short response")
 	ErrNoSession    = errors.New("finger2: no auto session active")
+	ErrNoTransport  = errors.New("finger2: nil transport")
 )
 
 // Code is a confirmation code returned by the module.
