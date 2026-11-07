@@ -3,6 +3,7 @@ package finger2
 import (
 	"errors"
 	"sync"
+	"testing"
 
 	"github.com/nicolasmmb/M5Unit-Fingerprint2-Go/internal/wire"
 )
@@ -106,4 +107,20 @@ func defaultHandler(cmd byte, payload []byte) (byte, []byte) {
 		return ConfirmOK, []byte{0x00, 2}
 	}
 	return ConfirmOK, nil
+}
+
+// TestNewTransport covers the board-agnostic constructor: any Transport works,
+// and a nil transport is rejected instead of panicking later.
+func TestNewTransport(t *testing.T) {
+	f := &fakeTransport{}
+	d, err := NewTransport(f)
+	if err != nil {
+		t.Fatalf("NewTransport: %v", err)
+	}
+	if d == nil {
+		t.Fatal("nil device")
+	}
+	if _, err := NewTransport(nil); err != ErrNoTransport {
+		t.Fatalf("nil transport = %v, want ErrNoTransport", err)
+	}
 }

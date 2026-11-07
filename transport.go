@@ -14,6 +14,18 @@ type Transport interface {
 	Buffered() int
 }
 
+// NewTransport returns a Device on any byte stream that implements Transport.
+//
+// This is the board-agnostic constructor: wrap a UART, a USB CDC port, a
+// network socket or an in-memory pipe. The esp32 build tag helper New(*machine.UART)
+// is just a convenience on top of it.
+func NewTransport(t Transport) (*Device, error) {
+	if t == nil {
+		return nil, ErrNoTransport
+	}
+	return newDevice(t), nil
+}
+
 func newDevice(t Transport) *Device {
 	return &Device{
 		transport: t,
