@@ -107,6 +107,37 @@ cancellation and concurrent callers.
   `SetMatchLevel` when a specific level is required.
 - `IAPReset` and a rainbow LED mode are not part of this firmware's protocol.
 
+## Board support
+
+This is the only lib of the M5 family that cannot be built outside the classic
+ESP32 today. The core is chip agnostic: it talks to a `Transport` interface
+(`Write`, `ReadByte`, `Buffered`). The problem is the public constructor.
+
+```go
+// uart_esp32.go — whole file under //go:build esp32
+func New(uart *machine.UART) *Device { return newDevice(uart) }
+```
+
+`newDevice(Transport)` is private, so on ESP32-C3/S3 or a non-Espressif chip the
+package compiles but exposes no way to create a `Device`.
+
+| Target | Result |
+|---|---|
+| `m5stick-c` (ESP32) | ok |
+| `m5stamp-c3` / `m5stamp-s3a` | `undefined: New` |
+| `pico` (RP2040) | `undefined: New` |
+| `arduino-nano33` (nRF52840) | `undefined: New` |
+
+Audit: `m5stick-hardware-pocs/docs/LIB-AGNOSTIC-AUDIT.md`.
+
+### Missing / next steps
+
+- [ ] Export `NewTransport(t Transport) *Device` in an untagged file.
+- [ ] Keep `New(*machine.UART)` as a convenience helper under `//go:build esp32`.
+- [ ] Add a host test that builds a `Device` from a `Transport` fake.
+- [ ] Add the target matrix to CI (`pico`, `arduino-nano33`).
+- [ ] Update this README once the constructor is available everywhere.
+
 ## Testing
 
 ```bash
